@@ -1419,7 +1419,8 @@ void ExynosDisplay::configureHandle(private_handle_t *handle, size_t index,
         if (handle->fd2 >= 0) {
             ExynosVideoMeta *metaData = NULL;
             int interlacedType = -1;
-            metaData = (ExynosVideoMeta*)mmap(0, sizeof(ExynosVideoMeta), PROT_READ|PROT_WRITE, MAP_SHARED, handle->fd2, 0);
+            metaData = (ExynosVideoMeta*)mmap(0, sizeof(metaData->eType),
+                        PROT_READ|PROT_WRITE, MAP_SHARED, handle->fd2, 0);
             if ((metaData) &&
                 (metaData->eType & VIDEO_INFO_TYPE_INTERLACED)) {
                 interlacedType = metaData->data.dec.nInterlacedType;
@@ -1433,7 +1434,7 @@ void ExynosDisplay::configureHandle(private_handle_t *handle, size_t index,
                 cfg.src.f_h = handle->vstride / 2;
             }
             if (metaData)
-                munmap(metaData, 64);
+                munmap(metaData, sizeof(metaData->eType));
         }
     }
 
@@ -2352,7 +2353,8 @@ void ExynosDisplay::determineYuvOverlay(hwc_display_contents_1_t *contents)
                     mOriginFrect.push(layer.sourceCropf);
 
                     if (handle->fd2 >= 0) {
-                        metaData = (ExynosVideoMeta*)mmap(0, sizeof(ExynosVideoMeta), PROT_READ|PROT_WRITE, MAP_SHARED, handle->fd2, 0);
+                        metaData = (ExynosVideoMeta*)mmap(0, sizeof(metaData->eType),
+                                    PROT_READ|PROT_WRITE, MAP_SHARED, handle->fd2, 0);
                         if ((metaData) &&
                             (metaData->eType & VIDEO_INFO_TYPE_INTERLACED)) {
                             interlacedType = metaData->data.dec.nInterlacedType;
@@ -2374,7 +2376,7 @@ void ExynosDisplay::determineYuvOverlay(hwc_display_contents_1_t *contents)
                     mBackUpFrect.push(layer.sourceCropf);
 
                     if (metaData)
-                        munmap(metaData, 64);
+                        munmap(metaData, sizeof(metaData->eType));
                 }
 
                 if (isOverlaySupported(contents->hwLayers[i], i, useVPPOverlayFlag, &supportedInternalMPP, &supportedExternalMPP)) {
