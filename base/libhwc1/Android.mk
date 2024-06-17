@@ -101,6 +101,11 @@ LOCAL_SHARED_LIBRARIES := $(COMMON_SHARED_LIBRARIES) \
     libexynosv4l2 libhwcutils libexynosdisplay libmpp libexynosgscaler
 LOCAL_HEADER_LIBRARIES := $(COMMON_HEADER_LIBRARIES)
 
+ifeq ($(BOARD_USES_FB_PHY_LINEAR),true)
+	LOCAL_SHARED_LIBRARIES += libfimg
+	LOCAL_C_INCLUDES += $(TOP)/hardware/samsung_slsi-linaro/exynos/libfimg4x
+endif
+
 LOCAL_CFLAGS := $(COMMON_CFLAGS)
 LOCAL_CFLAGS += -DLOG_TAG=\"virtualdisplay\"
 
@@ -208,6 +213,11 @@ LOCAL_CFLAGS += -DLOG_TAG=\"hwcutils\"
 
 LOCAL_C_INCLUDES := $(COMMON_C_INCLUDES)
 
+ifeq ($(BOARD_USES_FB_PHY_LINEAR),true)
+	LOCAL_SHARED_LIBRARIES += libfimg
+	LOCAL_C_INCLUDES += $(TOP)/hardware/samsung_slsi-linaro/exynos/libfimg4x
+endif
+
 LOCAL_SRC_FILES += \
 	libhwcutils/ExynosHWCUtils.cpp \
 	libhwcutils/ExynosMPPv2.cpp
@@ -229,6 +239,11 @@ LOCAL_PRELINK_MODULE := false
 LOCAL_SHARED_LIBRARIES := $(COMMON_SHARED_LIBRARIES) \
     libhwcutils libhardware libexynosgscaler
 LOCAL_HEADER_LIBRARIES := $(COMMON_HEADER_LIBRARIES)
+
+ifeq ($(BOARD_USES_FB_PHY_LINEAR),true)
+	LOCAL_SHARED_LIBRARIES += libfimg
+	LOCAL_C_INCLUDES += $(TOP)/hardware/samsung_slsi-linaro/exynos/libfimg4x
+endif
 
 LOCAL_CFLAGS := $(COMMON_CFLAGS)
 LOCAL_C_INCLUDES := $(COMMON_C_INCLUDES)
@@ -284,6 +299,11 @@ endif
 ifeq ($(BOARD_USES_HWC_SERVICES),true)
 	LOCAL_SHARED_LIBRARIES += libExynosHWCService
 	LOCAL_C_INCLUDES += $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libhwc1/libhwcService
+endif
+
+ifeq ($(BOARD_USES_FB_PHY_LINEAR),true)
+	LOCAL_SHARED_LIBRARIES += libfimg
+	LOCAL_C_INCLUDES += $(TOP)/hardware/samsung_slsi-linaro/exynos/libfimg4x
 endif
 
 LOCAL_SRC_FILES := ExynosHWC.cpp
