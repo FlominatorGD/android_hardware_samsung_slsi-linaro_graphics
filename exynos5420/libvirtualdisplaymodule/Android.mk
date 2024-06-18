@@ -12,35 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ifeq ($(filter-out exynos5,$(TARGET_BOARD_PLATFORM)),)
-
-LOCAL_PATH:= $(call my-dir)
-include $(CLEAR_VARS)
-
-LOCAL_SHARED_LIBRARIES := liblog libutils libcutils libexynosutils libexynosv4l2 libsync libexynosdisplay libvirtualdisplay
-
-LOCAL_CFLAGS += -DUSES_VIRTUAL_DISPLAY
-
-LOCAL_C_INCLUDES := \
-	$(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include \
-	$(LOCAL_PATH)/../../exynos5/include \
-	$(TOP)/hardware/samsung_slsi-linaro/exynos/include \
-	$(TOP)/hardware/samsung_slsi-linaro/exynos/libexynosutils \
-	$(TOP)/hardware/samsung_slsi-linaro/$(TARGET_SOC)/include \
-	$(TOP)/hardware/samsung_slsi-linaro/$(TARGET_SOC)/libhwcmodule \
-	$(TOP)/hardware/samsung_slsi-linaro/exynos/libhwc \
-	$(TOP)/hardware/samsung_slsi-linaro/exynos/libhwcutils \
-	$(TOP)/hardware/samsung_slsi-linaro/exynos/libexynosdisplay \
-	$(TOP)/hardware/samsung_slsi-linaro/exynos/libvirtualdisplay
-
-LOCAL_ADDITIONAL_DEPENDENCIES += \
-	$(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
-
-LOCAL_SRC_FILES := \
-	ExynosVirtualDisplayModule.cpp
-
-LOCAL_MODULE_TAGS := eng
-LOCAL_MODULE := libvirtualdisplaymodule
-include $(BUILD_SHARED_LIBRARY)
-
-endif
+LOCAL_SRC_FILES += \
+	./../../$(TARGET_SOC)/libvirtualdisplaymodule/ExynosVirtualDisplayModule.cpp
