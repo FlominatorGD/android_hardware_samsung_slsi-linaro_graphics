@@ -315,4 +315,3 @@ LOCAL_PROPRIETARY_MODULE := $(COMMON_PROPRIETARY_MODULE)
 
 include $(TOP)/hardware/samsung_slsi-linaro/exynos/BoardConfigCFlags.mk
 include $(BUILD_SHARED_LIBRARY)
-
