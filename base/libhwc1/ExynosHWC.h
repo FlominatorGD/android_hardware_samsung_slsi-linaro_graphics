@@ -37,6 +37,8 @@
 #include <decon-fb.h>
 #endif
 #include "ExynosDisplayResourceManagerModule.h"
+#else
+#include <decon-fb.h>
 #endif
 
 #define HWC_REMOVE_DEPRECATED_VERSIONS 1
@@ -68,6 +70,15 @@
 #include "ExynosHWCModule.h"
 #include "ExynosRect.h"
 #include "videodev2.h"
+
+#ifdef USE_FB_PHY_LINEAR
+const size_t NUM_HW_WIN_FB_PHY = 5;
+#undef DUAL_VIDEO_OVERLAY_SUPPORT
+#define G2D_COMPOSITION
+#ifdef G2D_COMPOSITION
+#define USE_FIMG2D_API
+#endif
+#endif
 
 #if defined(DUAL_VIDEO_OVERLAY_SUPPORT)
 #define MAX_VIDEO_LAYERS 2
@@ -142,7 +153,11 @@
  */
 const size_t NUM_HW_WINDOWS = NUM_AVAILABLE_HW_WINDOWS;
 #else
+#ifdef USES_VPP
+const size_t NUM_HW_WINDOWS = MAX_DECON_WIN;
+#else
 const size_t NUM_HW_WINDOWS = S3C_FB_MAX_WIN;
+#endif
 #endif
 
 #ifndef HWC_VERSION

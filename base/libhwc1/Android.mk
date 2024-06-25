@@ -105,7 +105,7 @@ include $(BUILD_SHARED_LIBRARY)
 endif
 ############################## libvppvirtualdisplay ##############################
 ifeq ($(BOARD_USES_VIRTUAL_DISPLAY), true)
-ifeq ($(BOARD_USES_VPP))
+ifeq ($(BOARD_USES_VPP), true)
 include $(CLEAR_VARS)
 
 LOCAL_PRELINK_MODULE := false
@@ -216,15 +216,12 @@ LOCAL_CFLAGS := $(COMMON_CFLAGS)
 
 LOCAL_C_INCLUDES := $(COMMON_C_INCLUDES)
 
-LOCAL_ADDITIONAL_DEPENDENCIES := \
-	$(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
-
 LOCAL_SRC_FILES := \
-	libhdmi_legacy\ExynosExternalDisplay.cpp
+        libhdmi_legacy/ExynosExternalDisplay.cpp
 
 ifneq ($(filter 3.10, $(TARGET_LINUX_KERNEL_VERSION)),)
 LOCAL_SRC_FILES += \
-	libhdmi_legacy\dv_timings.c
+	libhdmi_legacy/dv_timings.c
 LOCAL_CFLAGS += -DUSE_DV_TIMINGS
 endif
 
@@ -329,7 +326,7 @@ LOCAL_C_INCLUDES += \
 LOCAL_SHARED_LIBRARIES += libfimg
 LOCAL_SHARED_LIBRARIES += libMcClient
 LOCAL_STATIC_LIBRARIES := libsecurepath
-LOCAL_SRC_FILES += ExynosG2DWrapper.cpp
+LOCAL_SRC_FILES += libhwcutils/ExynosG2DWrapper.cpp
 endif
 endif
 
