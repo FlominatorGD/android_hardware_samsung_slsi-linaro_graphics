@@ -21,6 +21,10 @@
 #include <utils/Trace.h>
 #include <hardware_legacy/uevent.h>
 
+#if defined(USES_CEC)
+#include "libcec.h"
+#endif
+
 #ifdef HWC_SERVICES
 #include "ExynosHWCService.h"
 namespace android {
@@ -52,6 +56,143 @@ void doPSRExit(struct exynos5_hwc_composer_device_1_t *pdev)
     }
 }
 
+#if defined(USES_CEC)
+void handle_cec(exynos5_hwc_composer_device_1_t *pdev)
+{
+    unsigned char buffer[16];
+    int size;
+    unsigned char lsrc, ldst, opcode;
+
+    size = CECReceiveMessage(buffer, CEC_MAX_FRAME_SIZE, 1000);
+
+    /* no data available or ctrl-c */
+    if (!size)
+        return;
+
+    /* "Polling Message" */
+    if (size == 1)
+        return;
+
+    lsrc = buffer[0] >> 4;
+
+    /* ignore messages with src address == mCecLaddr */
+    if (lsrc == pdev->mCecLaddr)
+        return;
+
+    opcode = buffer[1];
+
+    if (CECIgnoreMessage(opcode, lsrc)) {
+        ALOGE("### ignore message coming from address 15 (unregistered)");
+        return;
+    }
+
+    if (!CECCheckMessageSize(opcode, size)) {
+        /*
+         * For some reason the TV sometimes sends messages that are too long
+         * Dropping these causes the connect process to fail, so for now we
+         * simply ignore the extra data and process the message as if it had
+         * the correct size
+         */
+        ALOGD("### invalid message size: %d(opcode: 0x%x) ###", size, opcode);
+    }
+
+    /* check if message broadcasted/directly addressed */
+    if (!CECCheckMessageMode(opcode, (buffer[0] & 0x0F) == CEC_MSG_BROADCAST ? 1 : 0)) {
+        ALOGE("### invalid message mode (directly addressed/broadcast) ###");
+        return;
+    }
+
+    ldst = lsrc;
+
+    /* TODO: macros to extract src and dst logical addresses */
+    /* TODO: macros to extract opcode */
+
+    switch (opcode) {
+    case CEC_OPCODE_GIVE_PHYSICAL_ADDRESS:
+        /* respond with "Report Physical Address" */
+        buffer[0] = (pdev->mCecLaddr << 4) | CEC_MSG_BROADCAST;
+        buffer[1] = CEC_OPCODE_REPORT_PHYSICAL_ADDRESS;
+        buffer[2] = (pdev->mCecPaddr >> 8) & 0xFF;
+        buffer[3] = pdev->mCecPaddr & 0xFF;
+        buffer[4] = 3;
+        size = 5;
+        break;
+
+    case CEC_OPCODE_SET_STREAM_PATH:
+    case CEC_OPCODE_REQUEST_ACTIVE_SOURCE:
+        /* respond with "Active Source" */
+        buffer[0] = (pdev->mCecLaddr << 4) | CEC_MSG_BROADCAST;
+        buffer[1] = CEC_OPCODE_ACTIVE_SOURCE;
+        buffer[2] = (pdev->mCecPaddr >> 8) & 0xFF;
+        buffer[3] = pdev->mCecPaddr & 0xFF;
+        size = 4;
+        break;
+
+    case CEC_OPCODE_GIVE_DEVICE_POWER_STATUS:
+        /* respond with "Report Power Status" */
+        buffer[0] = (pdev->mCecLaddr << 4) | ldst;
+        buffer[1] = CEC_OPCODE_REPORT_POWER_STATUS;
+        buffer[2] = 0;
+        size = 3;
+        break;
+
+    case CEC_OPCODE_REPORT_POWER_STATUS:
+        /* send Power On message */
+        buffer[0] = (pdev->mCecLaddr << 4) | ldst;
+        buffer[1] = CEC_OPCODE_USER_CONTROL_PRESSED;
+        buffer[2] = 0x6D;
+        size = 3;
+        break;
+
+    case CEC_OPCODE_USER_CONTROL_PRESSED:
+        buffer[0] = (pdev->mCecLaddr << 4) | ldst;
+        size = 1;
+        break;
+    case CEC_OPCODE_GIVE_DECK_STATUS:
+        /* respond with "Deck Status" */
+        buffer[0] = (pdev->mCecLaddr << 4) | ldst;
+        buffer[1] = CEC_OPCODE_DECK_STATUS;
+        buffer[2] = 0x11;
+        size = 3;
+        break;
+
+    case CEC_OPCODE_ABORT:
+    case CEC_OPCODE_FEATURE_ABORT:
+    default:
+        /* send "Feature Abort" */
+        buffer[0] = (pdev->mCecLaddr << 4) | ldst;
+        buffer[1] = CEC_OPCODE_FEATURE_ABORT;
+        buffer[2] = CEC_OPCODE_ABORT;
+        buffer[3] = 0x04;
+        size = 4;
+        break;
+    }
+
+    if (CECSendMessage(buffer, size) != size)
+        ALOGE("CECSendMessage() failed!!!");
+}
+
+void start_cec(exynos5_hwc_composer_device_1_t *pdev)
+{
+    unsigned char buffer[CEC_MAX_FRAME_SIZE];
+    int size;
+    pdev->mCecFd = CECOpen();
+    pdev->mCecPaddr = CEC_NOT_VALID_PHYSICAL_ADDRESS;
+    pdev->mCecPaddr = pdev->externalDisplay->getCecPaddr();
+    if (pdev->mCecPaddr < 0) {
+        ALOGE("Error getting physical address");
+        return;
+    }
+    pdev->mCecLaddr = CECAllocLogicalAddress(pdev->mCecPaddr, CEC_DEVICE_PLAYER);
+    /* Request power state from TV */
+    buffer[0] = (pdev->mCecLaddr << 4);
+    buffer[1] = CEC_OPCODE_GIVE_DEVICE_POWER_STATUS;
+    size = 2;
+    if (CECSendMessage(buffer, size) != size)
+        ALOGE("CECSendMessage(%#x) failed!!!", buffer[0]);
+}
+#endif
+
 void exynos5_boot_finished(exynos5_hwc_composer_device_1_t *dev)
 {
     ALOGD("Boot Finished");
@@ -74,6 +215,9 @@ void exynos5_boot_finished(exynos5_hwc_composer_device_1_t *dev)
                     pdev->hdmi_hpd = false;
                 }
                 pdev->externalDisplay->mBlanked = false;
+#if defined(USES_CEC)
+                start_cec(pdev);
+#endif
                 if (pdev->procs) {
                     pdev->procs->hotplug(pdev->procs, HWC_DISPLAY_EXTERNAL, true);
                     pdev->procs->invalidate(pdev->procs);
@@ -314,7 +458,15 @@ void handle_hdmi_uevent(struct exynos5_hwc_composer_device_1_t *pdev,
         }
 
         pdev->externalDisplay->mBlanked = false;
+#if defined(USES_CEC)
+        start_cec(pdev);
+    } else {
+        CECClose();
+        pdev->mCecFd = -1;
     }
+#else
+    }
+#endif
 
     ALOGV("HDMI HPD changed to %s", pdev->hdmi_hpd ? "enabled" : "disabled");
     if (pdev->hdmi_hpd)
@@ -446,14 +598,31 @@ void *hwc_vsync_thread(void *data)
         return NULL;
     }
 
+#if defined(USES_CEC)
+    struct pollfd fds[3];
+#else
     struct pollfd fds[2];
+#endif
     fds[0].fd = pdev->vsync_fd;
     fds[0].events = POLLPRI;
     fds[1].fd = uevent_get_fd();
     fds[1].events = POLLIN;
+#if defined(USES_CEC)
+    fds[2].fd = pdev->mCecFd;
+    fds[2].events = POLLIN;
+#endif
 
     while (true) {
+#if defined(USES_CEC)
+        int err;
+        fds[2].fd = pdev->mCecFd;
+        if (fds[2].fd > 0)
+            err = poll(fds, 3, -1);
+        else
+            err = poll(fds, 2, -1);
+#else
         int err = poll(fds, 2, -1);
+#endif
 
         if (err > 0) {
             if (fds[0].revents & POLLPRI) {
@@ -472,6 +641,10 @@ void *hwc_vsync_thread(void *data)
                     handle_hdmi_uevent(pdev, uevent_desc, len);
                 else if (tui_status)
                     handle_tui_uevent(pdev, uevent_desc, len);
+#if defined(USES_CEC)
+            } else if (pdev->hdmi_hpd && fds[2].revents & POLLIN) {
+                handle_cec(pdev);
+#endif
             }
         }
         else if (err == -1) {
@@ -1165,6 +1338,13 @@ int exynos5_open(const struct hw_module_t *module, const char *name,
     dev->mUseSubtitles = false;
     dev->notifyPSRExit = false;
 
+#if defined(USES_CEC)
+    if (dev->hdmi_hpd)
+        start_cec(dev);
+    else
+        dev->mCecFd = -1;
+#endif
+
     ret = pthread_create(&dev->vsync_thread, NULL, hwc_vsync_thread, dev);
     if (ret) {
         ALOGE("failed to start vsync thread: %s", strerror(ret));
@@ -1232,6 +1412,28 @@ int exynos5_close(hw_device_t *device)
 #endif
     gralloc_close(dev->primaryDisplay->mAllocDevice);
     close(dev->vsync_fd);
+
+#ifdef USE_FB_PHY_LINEAR
+#ifdef G2D_COMPOSITION
+    for (int i = 0; i < NUM_HW_WIN_FB_PHY; i++) {
+        for (int j = 0; j < NUM_GSC_DST_BUFS; j++) {
+            if (dev->win_buf_vir_addr[i][j]) {
+                ion_unmap((void *)dev->win_buf_vir_addr[i][j], dev->win_buf_map_size[i]);
+                dev->win_buf_vir_addr[i][j] = 0;
+            }
+        }
+    }
+#endif
+
+    for (int i = 0; i < NUM_HW_WIN_FB_PHY; i++) {
+        for (int j = 0; j < NUM_GSC_DST_BUFS; j++) {
+            if (dev->win_buf[i][j]) {
+                dev->primaryDisplay->mAllocDevice->free(dev->primaryDisplay->mAllocDevice, dev->win_buf[i][j]);
+                dev->win_buf[i][j] = NULL;
+            }
+        }
+    }
+#endif
 
 #ifdef USES_VPP
     delete dev->mDisplayResourceManager;

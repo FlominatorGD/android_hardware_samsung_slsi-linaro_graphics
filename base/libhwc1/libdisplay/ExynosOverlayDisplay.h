@@ -39,6 +39,7 @@ class ExynosOverlayDisplay : public ExynosDisplay {
         int clearDisplay();
         int getCompModeSwitch();
         int32_t getDisplayAttributes(const uint32_t attribute, uint32_t config);
+        // virtual int32_t getDisplayAttributes(const uint32_t attribute, uint32_t config = 0);
 
         bool switchOTF(bool enable);
 

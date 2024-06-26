@@ -202,8 +202,7 @@ include $(TOP)/hardware/samsung_slsi-linaro/graphics/$(TARGET_SOC_BASE)/libhdmim
 include $(BUILD_SHARED_LIBRARY)
 
 ############################## libhdmi_legacy ##############################
-else
-ifeq ($(BOARD_HDMI_LEGACY), true)
+else ifeq ($(BOARD_HDMI_LEGACY), true)
 
 include $(CLEAR_VARS)
 
