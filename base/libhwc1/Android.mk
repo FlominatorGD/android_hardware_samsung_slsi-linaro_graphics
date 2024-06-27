@@ -305,6 +305,9 @@ ifeq ($(BOARD_USES_FB_PHY_LINEAR),true)
 	LOCAL_C_INCLUDES += $(TOP)/hardware/samsung_slsi-linaro/exynos/libfimg4x
 endif
 
+LOCAL_SRC_FILES += \
+	libhwcutils/ExynosHWCUtils.cpp
+
 ifeq ($(BOARD_USES_VPP), true)
 LOCAL_SRC_FILES += \
 	libhwcutils/ExynosMPPv2.cpp

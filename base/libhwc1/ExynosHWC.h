@@ -38,7 +38,9 @@
 #endif
 #include "ExynosDisplayResourceManagerModule.h"
 #else
-#include <decon_5420.h>
+#ifdef USES_EXYNOS5420
+#include <s3c-fb.h>
+#endif
 #endif
 
 #define HWC_REMOVE_DEPRECATED_VERSIONS 1
@@ -70,6 +72,11 @@
 #include "ExynosHWCModule.h"
 #include "ExynosRect.h"
 #include "videodev2.h"
+
+#ifdef USES_EXYNOS5420
+// fix me
+#include "libvpphdmi/videodev2_exynos_hdmi.h"
+#endif
 
 #ifdef USE_FB_PHY_LINEAR
 const size_t NUM_HW_WIN_FB_PHY = 5;
