@@ -24,7 +24,9 @@ LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
 LOCAL_EXPORT_SHARED_LIBRARY_HEADERS += libexynosscaler
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/include \
-                 $(TOP)/hardware/samsung_slsi/exynos5/include
+                 $(TOP)/hardware/samsung_slsi-linaro/exynos5/include \
+	         $(TOP)/hardware/samsung_slsi-linaro/exynos/libexynosutils \
+	         $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libmpp
 
 ifeq ($(filter 3.10, $(TARGET_LINUX_KERNEL_VERSION)), 3.10)
 LOCAL_C_INCLUDES += $(TOP)/hardware/samsung_slsi-linaro/exynos/kernel-3.10-headers
