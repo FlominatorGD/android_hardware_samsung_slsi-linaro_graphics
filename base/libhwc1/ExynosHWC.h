@@ -37,6 +37,10 @@
 #include <decon-fb.h>
 #endif
 #include "ExynosDisplayResourceManagerModule.h"
+#else
+#ifdef USES_LEGACY_SCALER
+#include <s3c-fb.h>
+#endif
 #endif
 
 #define HWC_REMOVE_DEPRECATED_VERSIONS 1
@@ -59,7 +63,11 @@
 #include "gralloc_priv.h"
 #endif
 #ifndef USES_FIMC
+#ifdef USES_LEGACY_SCALER
+#include "exynos_gscaler_legacy.h"
+#else
 #include "exynos_gscaler.h"
+#endif
 #else
 #include "exynos_fimc.h"
 #endif
@@ -142,7 +150,11 @@
  */
 const size_t NUM_HW_WINDOWS = NUM_AVAILABLE_HW_WINDOWS;
 #else
+#ifdef USES_VPP
+const size_t NUM_HW_WINDOWS = MAX_DECON_WIN;
+#else
 const size_t NUM_HW_WINDOWS = S3C_FB_MAX_WIN;
+#endif
 #endif
 
 #ifndef HWC_VERSION

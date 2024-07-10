@@ -15,12 +15,20 @@
 ifneq ($(findstring exynos, $(TARGET_SOC)),)
 build_dirs :=  \
     libfimg    \
-    libscaler  \
-    libgscaler \
     libacryl \
     libmpp \
     libmemtrack \
     giantmscl
+
+ifeq ($(BOARD_USES_LEGACY_SCALER), true)
+build_dirs += \
+    libscaler_legacy  \
+    libgscaler_legacy
+else
+build_dirs += \
+    libscaler \
+    libgscaler
+endif
 
 ifeq ($(TARGET_USES_UNIVERSAL_LIBHWJPEG), true)
 build_dirs +=  \

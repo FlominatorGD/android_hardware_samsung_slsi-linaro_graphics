@@ -28,22 +28,35 @@ COMMON_C_INCLUDES := \
     $(TOP)/hardware/samsung_slsi-linaro/graphics/base/include \
     $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libhwc1 \
     $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libhwc1/libhwcutils \
-    $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libhwc1/libvppdisplay \
     $(TOP)/hardware/samsung_slsi-linaro/graphics/$(TARGET_SOC_BASE)/libhwcmodule \
     $(TOP)/hardware/samsung_slsi-linaro/graphics/$(TARGET_SOC_BASE)/libdisplaymodule \
     $(TOP)/hardware/samsung_slsi-linaro/graphics/$(TARGET_SOC_BASE)/libhwcutilsmodule \
     $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libmpp
 
+ifeq ($(BOARD_USES_VPP), true)
+COMMON_C_INCLUDES += $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libhwc1/libvppdisplay
+else
+COMMON_C_INCLUDES += $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libhwc1/libdisplay
+endif
+
 ifeq ($(BOARD_HDMI_INCAPABLE), true)
 COMMON_C_INCLUDES += $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libhwc1/libhdmi_dummy
+else ifeq ($(BOARD_HDMI_LEGACY), true)
+COMMON_C_INCLUDES += $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libhwc1/libhdmi_legacy
 else
 COMMON_C_INCLUDES += $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libhwc1/libvpphdmi
 endif
 
 ifeq ($(BOARD_USES_VIRTUAL_DISPLAY), true)
+ifeq ($(BOARD_USES_VPP), true)
 COMMON_C_INCLUDES += \
-    $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libhwc1/libvppvirtualdisplay \
-    $(TOP)/hardware/samsung_slsi-linaro/graphics/$(TARGET_SOC_BASE)/libvirtualdisplaymodule
+    $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libhwc1/libvppvirtualdisplay
+else
+COMMON_C_INCLUDES += \
+    $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libhwc1/libvirtualdisplay
+endif
+COMMON_C_INCLUDES += \
+    $(TOP)/hardware/samsung_slsi-linaro/graphics/$(TARGET_SOC_BASE)/libvirtualdisplaymodule	
 endif
 
 COMMON_CFLAGS := -Wno-unused-parameter -Wno-unused-function
@@ -51,6 +64,10 @@ COMMON_CFLAGS += -DHLOG_CODE=0
 
 ifeq ($(BOARD_DISABLE_HWC_DEBUG), true)
 	COMMON_CFLAGS += -DDISABLE_HWC_DEBUG
+endif
+
+ifeq ($(BOARD_USES_LEGACY_SCALER), true)
+       COMMON_CFLAGS += -DUSES_LEGACY_SCALER
 endif
 
 ifeq ($(BOARD_USES_VENDORIMAGE), true)
@@ -90,7 +107,7 @@ endif
 
 ############################## libvppvirtualdisplay ##############################
 ifeq ($(BOARD_USES_VIRTUAL_DISPLAY), true)
-
+ifeq ($(BOARD_USES_VPP), true)
 include $(CLEAR_VARS)
 
 LOCAL_PRELINK_MODULE := false
@@ -120,6 +137,41 @@ include $(TOP)/hardware/samsung_slsi-linaro/graphics/$(TARGET_SOC_BASE)/libvirtu
 include $(TOP)/hardware/samsung_slsi-linaro/exynos/BoardConfigCFlags.mk
 include $(BUILD_SHARED_LIBRARY)
 
+
+############################## libvirtualdisplay ##############################
+else
+include $(CLEAR_VARS)
+
+LOCAL_PRELINK_MODULE := false
+LOCAL_SHARED_LIBRARIES := $(COMMON_SHARED_LIBRARIES) \
+    libexynosv4l2 libhwcutils libexynosdisplay libmpp
+LOCAL_HEADER_LIBRARIES := $(COMMON_HEADER_LIBRARIES)
+
+
+LOCAL_CFLAGS := $(COMMON_CFLAGS)
+LOCAL_CFLAGS += -DLOG_TAG=\"virtual\"
+LOCAL_CFLAGS += -DHLOG_CODE=3
+
+LOCAL_C_INCLUDES := $(COMMON_C_INCLUDES)
+
+LOCAL_C_INCLUDES += $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libhwc1/libhdmi_legacy
+
+ifeq ($(BOARD_USES_HWC_SERVICES),true)
+    LOCAL_C_INCLUDES += $(TOP)/hardware/samsung_slsi-linaro/graphics/base/libhwc1/libhwcService
+endif
+
+LOCAL_SRC_FILES := \
+    libvirtualdisplay/ExynosVirtualDisplay.cpp
+
+LOCAL_MODULE_TAGS := optional
+LOCAL_PROPRIETARY_MODULE := $(COMMON_PROPRIETARY_MODULE)
+LOCAL_MODULE := libvirtualdisplay
+
+include $(TOP)/hardware/samsung_slsi-linaro/graphics/$(TARGET_SOC_BASE)/libvirtualdisplaymodule/Android.mk
+include $(TOP)/hardware/samsung_slsi-linaro/exynos/BoardConfigCFlags.mk
+include $(BUILD_SHARED_LIBRARY)
+
+endif
 endif
 
 ############################## libhdmi_dummy ##############################
@@ -138,6 +190,41 @@ LOCAL_C_INCLUDES := $(COMMON_C_INCLUDES)
 
 LOCAL_SRC_FILES := \
 	libhdmi_dummy/ExynosExternalDisplay.cpp
+
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE := libhdmi
+LOCAL_PROPRIETARY_MODULE := $(COMMON_PROPRIETARY_MODULE)
+
+include $(TOP)/hardware/samsung_slsi-linaro/exynos/BoardConfigCFlags.mk
+include $(TOP)/hardware/samsung_slsi-linaro/graphics/$(TARGET_SOC_BASE)/libhdmimodule/Android.mk
+include $(BUILD_SHARED_LIBRARY)
+
+############################## libhdmi_legacy ##############################
+else ifeq ($(BOARD_HDMI_LEGACY), true)
+
+include $(CLEAR_VARS)
+
+LOCAL_PRELINK_MODULE := false
+LOCAL_SHARED_LIBRARIES := $(COMMON_SHARED_LIBRARIES) \
+    libexynosutils libexynosv4l2 libhwcutils libexynosdisplay libmpp libion
+LOCAL_HEADER_LIBRARIES := $(COMMON_HEADER_LIBRARIES)
+
+LOCAL_CFLAGS := $(COMMON_CFLAGS)
+
+LOCAL_C_INCLUDES := $(COMMON_C_INCLUDES)
+
+LOCAL_SRC_FILES := \
+        libhdmi_legacy/ExynosExternalDisplay.cpp
+
+ifneq ($(filter 3.10, $(TARGET_LINUX_KERNEL_VERSION)),)
+LOCAL_SRC_FILES += \
+	libhdmi_legacy/dv_timings.c
+LOCAL_CFLAGS += -DUSE_DV_TIMINGS
+endif
+
+ifeq ($(TARGET_BOARD_PLATFORM),exynos4)
+	LOCAL_CFLAGS += -DNOT_USE_TRIPLE_BUFFER
+endif
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libhdmi
@@ -205,9 +292,39 @@ LOCAL_CFLAGS += -DLOG_TAG=\"hwcutils\"
 
 LOCAL_C_INCLUDES := $(COMMON_C_INCLUDES)
 
+ifeq ($(BOARD_USES_FIMC), true)
+        LOCAL_SHARED_LIBRARIES += libexynosfimc
+else
+        LOCAL_SHARED_LIBRARIES += libexynosgscaler
+endif
+
+
 LOCAL_SRC_FILES += \
-	libhwcutils/ExynosHWCUtils.cpp \
+	libhwcutils/ExynosHWCUtils.cpp
+
+ifeq ($(BOARD_USES_VPP), true)
+LOCAL_SRC_FILES += \
 	libhwcutils/ExynosMPPv2.cpp
+else
+LOCAL_SRC_FILES += \
+	libhwcutils/ExynosMPP.cpp
+endif
+
+ifeq ($(BOARD_USES_VIRTUAL_DISPLAY), true)
+ifeq ($(BOARD_USES_VPP), true)
+LOCAL_C_INCLUDES += \
+	$(LOCAL_PATH)/../libvppvirtualdisplay
+else
+
+LOCAL_C_INCLUDES += \
+	$(LOCAL_PATH)/../libvirtualdisplay \
+	$(TOP)/hardware/samsung_slsi-linaro/exynos/libfimg4x
+LOCAL_SHARED_LIBRARIES += libfimg
+LOCAL_SHARED_LIBRARIES += libMcClient
+LOCAL_STATIC_LIBRARIES := libsecurepath
+LOCAL_SRC_FILES += libhwcutils/ExynosG2DWrapper.cpp
+endif
+endif
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libhwcutils
@@ -219,7 +336,7 @@ include $(TOP)/hardware/samsung_slsi-linaro/exynos/BoardConfigCFlags.mk
 include $(BUILD_SHARED_LIBRARY)
 
 ############################## libExynosDisplay ##############################
-
+ifeq ($(BOARD_USES_VPP), true)
 include $(CLEAR_VARS)
 
 LOCAL_PRELINK_MODULE := false
@@ -244,6 +361,37 @@ include $(TOP)/hardware/samsung_slsi-linaro/graphics/$(TARGET_SOC_BASE)/libdispl
 include $(TOP)/hardware/samsung_slsi-linaro/exynos/BoardConfigCFlags.mk
 include $(BUILD_SHARED_LIBRARY)
 
+############################## libExynosDisplay_legacy ##############################
+else
+include $(CLEAR_VARS)
+
+LOCAL_PRELINK_MODULE := false
+LOCAL_SHARED_LIBRARIES := $(COMMON_SHARED_LIBRARIES) \
+    libhwcutils libhardware libexynosgscaler
+LOCAL_HEADER_LIBRARIES := $(COMMON_HEADER_LIBRARIES)
+
+ifeq ($(BOARD_USES_FIMC), true)
+LOCAL_SHARED_LIBRARIES += libexynosfimc
+else
+LOCAL_SHARED_LIBRARIES += libexynosgscaler
+endif
+
+LOCAL_CFLAGS := $(COMMON_CFLAGS)
+LOCAL_C_INCLUDES := $(COMMON_C_INCLUDES)
+
+LOCAL_SRC_FILES := \
+	libdisplay/ExynosDisplay.cpp \
+	libdisplay/ExynosOverlayDisplay.cpp
+
+LOCAL_PROPRIETARY_MODULE := $(COMMON_PROPRIETARY_MODULE)
+
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE := libexynosdisplay
+
+include $(TOP)/hardware/samsung_slsi-linaro/graphics/$(TARGET_SOC_BASE)/libdisplaymodule/Android.mk
+include $(TOP)/hardware/samsung_slsi-linaro/exynos/BoardConfigCFlags.mk
+include $(BUILD_SHARED_LIBRARY)
+endif
 ############################## hwcomposer.exynos5.so ##############################
 
 # HAL module implemenation, not prelinked and stored in
@@ -292,4 +440,3 @@ LOCAL_PROPRIETARY_MODULE := $(COMMON_PROPRIETARY_MODULE)
 
 include $(TOP)/hardware/samsung_slsi-linaro/exynos/BoardConfigCFlags.mk
 include $(BUILD_SHARED_LIBRARY)
-
