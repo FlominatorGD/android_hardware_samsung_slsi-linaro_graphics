@@ -41,7 +41,11 @@ else
 ifeq ($(BOARD_USES_HWC2), true)
 build_dirs += libhwc2
 else
+ifeq ($(BOARD_HWC_VERSION), libhwc_legacy)
+build_dirs += libhwc1_legacy
+else
 build_dirs += libhwc1
+endif
 endif
 endif
 
