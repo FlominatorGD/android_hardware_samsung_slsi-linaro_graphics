@@ -351,7 +351,6 @@ int exynos5_set(struct hwc_composer_device_1 *dev,
     hwc_display_contents_1_t *virtual_contents = displays[HWC_DISPLAY_VIRTUAL];
     int virtual_err = 0;
 #endif
-    int fimd_err = 0, hdmi_err = 0;
 
 #if defined(USES_DUAL_DISPLAY)
     if ((pdev->hdmi_hpd == false) && fimd_contents1) {
