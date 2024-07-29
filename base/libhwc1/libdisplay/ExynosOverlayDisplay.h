@@ -4,10 +4,10 @@
 #include "ExynosHWC.h"
 #include "ExynosDisplay.h"
 
-// #define S3D_ERROR -1
-// #undef HDMI_PRESET_DEFAULT
-// #define HDMI_PRESET_DEFAULT V4L2_DV_1080P60
-// #define HDMI_PRESET_ERROR -1
+#define S3D_ERROR -1
+#undef HDMI_PRESET_DEFAULT
+#define HDMI_PRESET_DEFAULT V4L2_DV_1080P60
+#define HDMI_PRESET_ERROR -1
 
 class ExynosMPPModule;
 
